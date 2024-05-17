@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Cold Pass</title>
+        <link rel="icon" href="./favicon.ico" type="image/x-icon">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Poetsen+One&display=swap" rel="stylesheet">
+        <style>
+            button {
+                background-color: #4d5b7a;
+                border: 2px solid #4d5b7a;
+                border-radius: 5px;
+                color: white;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 20px;
+                margin: 6px 5px;
+                padding: 5px 30px;
+                cursor: pointer;
+            }
+
+            h1 {
+                color: #4d5b7a;
+                font-weight: normal;
+                font-family: "Poetsen One", sans-serif;
+                font-weight: 400;
+            }
+
+            h2 {
+                color: #4d5b7a;
+                font-weight: lighter;
+            }
+
+            p {
+                font-size: 40px;
+                padding: 5px 5px;
+                margin-top: -10px font-family: monospace;
+            }
+
+            #numpad-del {
+                margin: 6px 10px;
+                padding: 5px 55px;
+                background-color: #ed0c0c;
+            }
+
+            #record-mode {
+                font-size: 30px;
+            }
+
+            #hd-password {
+                font-family: monospace;
+                font-weight: 400;
+                font-style: normal;
+                font-size: 14px;
+                color: #021f0a;
+                padding: -5px;
+                margin: -5px;
+            }
+
+            #split-pass {
+                font-family: monospace;
+                font-weight: 400;
+                font-style: normal;
+                font-size: 17px;
+                color: #11422b;
+                background-color: #d7dadb;
+            }
+
+            #seed-pad {
+                font-family: "Poetsen One", sans-serif;
+                font-weight: 400;
+                font-style: normal;
+                background-color: #dadfe8;
+                font-size: 20px
+            }
+
+            #derive-button {
+                padding: 10px;
+                font-size: 15px;
+            }
+        </style>
+        <style>
+            input[type=text],
+            select {
+                width: 100%;
+                padding: 12px 20px;
+                margin: 8px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+                font-size: 20px;
+            }
+
+            input[type=password],
+            select {
+                width: 100%;
+                padding: 12px 20px;
+                margin: 8px 0;
+                display: inline-block;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-sizing: border-box;
+                font-size: 20px;
+            }
+
+            input[type="radio"] {
+                -ms-transform: scale(1.5);
+                /* IE 9 */
+                -webkit-transform: scale(1.5);
+                /* Chrome, Safari, Opera */
+                transform: scale(1.5);
+            }
+
+            div {
+                border-radius: 8px;
+                background-color: #f2f2f2;
+                padding: 5px;
+            }
+        </style>
+        <script src="words.js"></script>
+        <script type="module" src="main.js"></script>
+    </head>
+    <body>
+        <main>
+            <h1 style="text-align:center">Cold Pass</h1>
+            <div id="gen-pad" style="height:300px;display:none;">
+                <div id="seed-pad">
+                    <h3> Generated Password </h3>
+                    <p id="hd-password"></p>
+                    <p id="split-pass"></p>
+                </div>
+            </div>
+            <div style="padding:10px" id="mnemonic-div">
+                <div id="matches-div"></div>
+                <form id="auth-form">
+                    <!-- An element to toggle between password visibility -->
+                    <input id="show-password" type="checkbox" onclick="togglePhraseVisibility()">Show Phrase <label id="mnemonic-label" for="mnemonic-input">
+                        <b></b>
+                    </label>
+                    <input oninput="getMatches(this)" placeholder="Enter seed phrase" type="password" id="mnemonic-input" name="mnemonic">
+                    <br>
+                    <br>
+                </form>
+                <button onclick="processAuth()" id="auth-button"> authenticate </button>
+            </div>
+            <div style="background-color:powder-blue;display:none;padding:10px" id="site-div">
+                <form style="font-family:courier;" id="site-form">
+                    <label id="password-length-label" for="password-length"> password: </label>
+                    <input id="password-length" style="width:30px" value="20" />
+                    <label id="pin-length-label" for="pin-length"> pin: </label>
+                    <input id="pin-length" style="width:30px" value="8" />
+                    <label id="site-label" for="site-input"></label>
+                    <input autocomplete="on" placeholder="Enter Site Name" type="text" id="site-input" name="site-name">
+                    <br>
+                    <br>
+                </form>
+                <button onclick="derivePin()" id="derive-button"> Derive Pin </button>
+                <button onclick="derivePassword()" id="derive-button"> Derive Password </button>
+            </div>
+        </main>
+        <div>
+            <input placeholder="auth hash" id="auth-hash" disabled>
+            <br />
+        </div>
+        <script>
+            function setProp(prop, value) {
+                window.localStorage.setItem(prop, value);
+                return true;
+            }
+
+            function getProp(prop) {
+                return window.localStorage.getItem(prop)
+            }
+
+            function moveCursorToEnd(id) {
+                var el = document.getElementById(id)
+                el.focus()
+                if (typeof el.selectionStart == "number") {
+                    el.selectionStart = el.selectionEnd = el.value.length;
+                } else if (typeof el.createTextRange != "undefined") {
+                    var range = el.createTextRange();
+                    range.collapse(false);
+                    range.select();
+                }
+            }
+            document.getElementById('mnemonic-input').addEventListener('blur', e => {
+                e.target.focus();
+            }, function() {}, true);
+        </script>
+    </body>
+</html>
